@@ -25,7 +25,7 @@ func FromInfix(in string) string {
 			for {
 				topChar := buf.pop()
 				if topChar == nil {
-					buf.push(topChar)
+					// buf.push(topChar)
 					break
 				}
 				top, ok := operators[topChar.(string)]
