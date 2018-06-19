@@ -16,6 +16,11 @@ type exp struct {
 var cases = []exp{
 	exp{"3 / 0", "3 0 /", math.Inf(1)},
 	exp{"3 + 2", "3 2 +", 5},
+	exp{"3 + -2", "3 0 2 - +", 1},
+	exp{"3 - -2", "3 0 2 - -", 5},
+	exp{"-3 + -2", "0 3 - 0 2 - +", -5},
+	exp{"-3 + -0 + -2", "0 3 - 0 0 - + 0 2 - +", -5},
+	exp{"-(3 + -2)*-1", "0 3 0 2 - + 0 1 - * -", 1},
 	exp{"3 2 4 + +", "3 2 4 + +", 9},
 	exp{" 3 + 2 ", "3 2 +", 5},
 	exp{"(3 + 2)", "3 2 +", 5},
@@ -116,7 +121,7 @@ func TestInvalidPostfixInput(t *testing.T) {
 	for i, c := range invalidPostfixCases {
 		_, err := Calculate(c)
 		exp := fmt.Errorf("Invalid postfix notation: %s", c)
-		if exp.Error() != err.Error() {
+		if err == nil || exp.Error() != err.Error() {
 			t.Error("case:", i,
 				"\n\trpn:            ", c,
 				"\n\texpected error: ", exp,

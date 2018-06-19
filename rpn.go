@@ -14,7 +14,8 @@ func FromInfix(in string) (string, error) {
 	buf := newStack()
 	var tmp bytes.Buffer
 
-	for _, v := range in {
+	var prev rune
+	for i, v := range in {
 		if unicode.IsDigit(v) {
 			tmp.WriteRune(v)
 			continue
@@ -22,11 +23,18 @@ func FromInfix(in string) (string, error) {
 		if tmp.Len() > 0 {
 			out.push(tmp.String())
 			tmp.Reset()
+			prev = 0
 		}
-
 		op := string(v)
 		switch op {
 		case "^", "*", "/", "+", "-":
+			// check unary minus
+			if op == "-" && !unicode.IsDigit(prev) && prev != 0 || op == "-" && i == 0 {
+				out.push("0")
+				buf.push(op)
+				break
+			}
+
 			for t := buf.peak(); t != nil; t = buf.peak() {
 				top, ok := operators[t.(string)]
 
@@ -37,6 +45,7 @@ func FromInfix(in string) (string, error) {
 				out.push(buf.pop())
 			}
 			buf.push(op)
+			prev = v
 		case "(":
 			buf.push(op)
 		case ")":
