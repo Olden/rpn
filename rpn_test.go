@@ -47,15 +47,7 @@ func TestFromInfix(t *testing.T) {
 
 func BenchmarkFromInfix(b *testing.B) {
 	for j := 0; j < b.N; j++ {
-		for i, e := range cases {
-			r := FromInfix(e.infix)
-			if e.rpn != r {
-				b.Error("case:", i,
-					"\n\tinfix:       ", e.infix,
-					"\n\texpected rpn:", e.rpn,
-					"\n\tresult:      ", r)
-			}
-		}
+		FromInfix("((15 / (7 - (1 + 1))) * 3) - (2 + (1 + 1))")
 	}
 }
 
@@ -74,16 +66,7 @@ func TestRpnCalculation(t *testing.T) {
 
 func BenchmarkRpnCalculation(b *testing.B) {
 	for j := 0; j < b.N; j++ {
-		for i, e := range cases {
-			r := Calculate(e.rpn)
-			if e.result != r {
-				b.Error("case:", i,
-					"\n\tinfix:          ", e.infix,
-					"\n\trpn:            ", e.rpn,
-					"\n\texpected result:", e.result,
-					"\n\tresult:         ", r)
-			}
-		}
+		Calculate("15 7 1 1 + - / 3 * 2 1 1 + + -")
 	}
 }
 

@@ -3,13 +3,15 @@ package rpn
 import "math"
 
 const (
-	left = iota
+	left assoc = iota
 	right
 )
 
+type assoc int
+
 type operator struct {
 	priority int
-	assoc    int
+	assoc    assoc
 }
 
 var operators = map[string]operator{
