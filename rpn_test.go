@@ -2,6 +2,7 @@ package rpn
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 )
@@ -103,27 +104,31 @@ func TestInvalidInfixInput(t *testing.T) {
 	}
 }
 
-type invalidPostix struct {
-	rpn string
-	err error
-}
-
-var invalidPostfixCases = []invalidPostix{
-	invalidPostix{"1 a + 3 *", errors.New("Unknown operator: a")},
-	invalidPostix{"a 1 + 3 *", errors.New("Unknown operator: a")},
-	invalidPostix{"+ 3", errors.New("Invalid postfix notation: + 3")},
-	invalidPostix{"2 3 ?", errors.New("Unknown operator: ?")},
-	invalidPostix{"2 3 + *", errors.New("Invalid postfix notation: 2 3 + *")},
+var invalidPostfixCases = []string{
+	"1 a + 3 *",
+	"a 1 + 3 *",
+	"+ 3",
+	"2 3 ?",
+	"2 3 + *",
 }
 
 func TestInvalidPostfixInput(t *testing.T) {
-	for i, e := range invalidPostfixCases {
-		_, err := Calculate(e.rpn)
-		if e.err.Error() != err.Error() {
+	for i, c := range invalidPostfixCases {
+		_, err := Calculate(c)
+		exp := fmt.Errorf("Invalid postfix notation: %s", c)
+		if exp.Error() != err.Error() {
 			t.Error("case:", i,
-				"\n\trpn:            ", e.rpn,
-				"\n\texpected error: ", e.err,
+				"\n\trpn:            ", c,
+				"\n\texpected error: ", exp,
 				"\n\tresult:         ", err)
+		}
+	}
+}
+
+func TestPostfixValidation(t *testing.T) {
+	for _, e := range invalidPostfixCases {
+		if isValidRpn(e) != false {
+			t.Errorf("Given rpn: %s is invalid, but it not been determined", e)
 		}
 	}
 }

@@ -70,31 +70,48 @@ func FromInfix(in string) (string, error) {
 
 // Calculate given postfix expression
 func Calculate(in string) (float64, error) {
+	if !isValidRpn(in) {
+		return 0, fmt.Errorf("Invalid postfix notation: %s", in)
+	}
 	buf := newStack()
 
-	for _, v := range strings.Split(in, " ") {
-		if len(v) == 0 {
-			continue
-		}
-
+	for _, v := range strings.Split(strings.Trim(in, " "), " ") {
 		if n, err := strconv.ParseFloat(v, 64); err == nil {
 			buf.push(n)
 			continue
 		}
 
-		op, ok := operators[v]
-		if !ok {
-			return 0, fmt.Errorf("Unknown operator: %s", v)
-		}
-
-		if buf.length < 2 {
-			return 0, fmt.Errorf("Invalid postfix notation: %s", in)
-		}
 		sec := buf.pop().(float64)
 		first := buf.pop().(float64)
 
-		buf.push(op.call(first, sec))
+		buf.push(operators[v].call(first, sec))
 	}
 
 	return buf.pop().(float64), nil
+}
+
+func isValidRpn(in string) bool {
+	c := 0
+	for _, v := range strings.Split(strings.Trim(in, " "), " ") {
+		if _, err := strconv.ParseFloat(v, 64); err == nil {
+			c++
+			continue
+		}
+
+		_, ok := operators[v]
+		if ok {
+			c--
+			c--
+			if c < 0 {
+				return false
+			}
+			c++
+		}
+	}
+
+	if c == 1 {
+		return true
+	}
+
+	return false
 }
