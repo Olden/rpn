@@ -2,14 +2,14 @@ package rpn
 
 import (
 	"bytes"
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
 )
 
 // FromInfix convert infix expressions to postfix expressions (reverse Polish notation)
-func FromInfix(in string) string {
+func FromInfix(in string) (string, error) {
 	out := newStack()
 	buf := newStack()
 	var tmp bytes.Buffer
@@ -28,22 +28,26 @@ func FromInfix(in string) string {
 		switch op {
 		case "^", "*", "/", "+", "-":
 			for t := buf.peak(); t != nil; t = buf.peak() {
-				top, isOperator := operators[t.(string)]
-				if !isOperator {
+				top, ok := operators[t.(string)]
+
+				if !ok || operators[op].priority > top.priority ||
+					operators[op].priority == top.priority && operators[op].assoc == right {
 					break
 				}
-				if operators[op].priority < top.priority ||
-					operators[op].priority == top.priority && operators[op].assoc == left {
-					out.push(buf.pop())
-				} else {
-					break
-				}
+				out.push(buf.pop())
 			}
 			buf.push(op)
 		case "(":
 			buf.push(op)
 		case ")":
-			for l := buf.pop(); l.(string) != "("; l = buf.pop() {
+			for {
+				if buf.length == 0 {
+					return "", fmt.Errorf("Invalid bracket order: %s. Not enough open bracket", in)
+				}
+				l := buf.pop()
+				if l.(string) == "(" {
+					break
+				}
 				out.push(l)
 			}
 		}
@@ -54,14 +58,18 @@ func FromInfix(in string) string {
 	}
 
 	for buf.length > 0 {
-		out.push(buf.pop())
+		l := buf.pop()
+		if l.(string) == "(" {
+			return "", fmt.Errorf("Invalid bracket order: %s. Not enough closed bracket", in)
+		}
+		out.push(l)
 	}
 
-	return out.string()
+	return out.string(), nil
 }
 
 // Calculate given postfix expression
-func Calculate(in string) float64 {
+func Calculate(in string) (float64, error) {
 	buf := newStack()
 
 	for _, v := range strings.Split(in, " ") {
@@ -69,23 +77,24 @@ func Calculate(in string) float64 {
 			continue
 		}
 
-		if _, err := strconv.ParseFloat(v, 64); err == nil {
-			buf.push(v)
+		if n, err := strconv.ParseFloat(v, 64); err == nil {
+			buf.push(n)
 			continue
 		}
 
-		sec, _ := strconv.ParseFloat(buf.pop().(string), 64)
-		first, _ := strconv.ParseFloat(buf.pop().(string), 64)
-
-		calc, isOperator := calcFunctions[v]
-		if !isOperator {
-			log.Fatalf("Unknown operator: %s", v)
+		op, ok := operators[v]
+		if !ok {
+			return 0, fmt.Errorf("Unknown operator: %s", v)
 		}
 
-		buf.push(strconv.FormatFloat(calc(first, sec), 'f', 2, 64))
+		if buf.length < 2 {
+			return 0, fmt.Errorf("Invalid postfix notation: %s", in)
+		}
+		sec := buf.pop().(float64)
+		first := buf.pop().(float64)
+
+		buf.push(op.call(first, sec))
 	}
 
-	res, _ := strconv.ParseFloat(buf.string(), 10)
-
-	return res
+	return buf.pop().(float64), nil
 }

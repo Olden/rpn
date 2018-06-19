@@ -1,6 +1,8 @@
 package rpn
 
 import (
+	"errors"
+	"math"
 	"testing"
 )
 
@@ -11,7 +13,9 @@ type exp struct {
 }
 
 var cases = []exp{
+	exp{"3 / 0", "3 0 /", math.Inf(1)},
 	exp{"3 + 2", "3 2 +", 5},
+	exp{"3 2 4 + +", "3 2 4 + +", 9},
 	exp{" 3 + 2 ", "3 2 +", 5},
 	exp{"(3 + 2)", "3 2 +", 5},
 	exp{"(3 + (2))", "3 2 +", 5},
@@ -29,13 +33,16 @@ var cases = []exp{
 	exp{"(1 + 2) * 4 + 3", "1 2 + 4 * 3 +", 15},
 	exp{"3 + 4 * 2 / (1 - 5) ^ 2", "3 4 2 * 1 5 - 2 ^ / +", 3.5},
 	exp{"9 ^ (1 / 2)", "9 1 2 / ^", 3},
-	exp{"9 ^ ((0 - 1) / 2)", "9 0 1 - 2 / ^", 0.33},
+	exp{"9 ^ ((0 - 1) / 2)", "9 0 1 - 2 / ^", 0.3333333333333333},
 	exp{"((15 / (7 - (1 + 1))) * 3) - (2 + (1 + 1))", "15 7 1 1 + - / 3 * 2 1 1 + + -", 5},
 }
 
 func TestFromInfix(t *testing.T) {
 	for i, e := range cases {
-		r := FromInfix(e.infix)
+		r, err := FromInfix(e.infix)
+		if err != nil {
+			t.Error("unexpected error:", err)
+		}
 		if e.rpn != r {
 			t.Error("case:", i,
 				"\n\tinfix:       ", e.infix,
@@ -53,7 +60,10 @@ func BenchmarkFromInfix(b *testing.B) {
 
 func TestRpnCalculation(t *testing.T) {
 	for i, e := range cases {
-		r := Calculate(e.rpn)
+		r, err := Calculate(e.rpn)
+		if err != nil {
+			t.Error("unexpected error:", err)
+		}
 		if e.result != r {
 			t.Error("case:", i,
 				"\n\tinfix:          ", e.infix,
@@ -70,11 +80,60 @@ func BenchmarkRpnCalculation(b *testing.B) {
 	}
 }
 
+type invalidInfix struct {
+	infix string
+	err   error
+}
+
+var invalidInfixCases = []invalidInfix{
+	invalidInfix{"3 + 3)", errors.New("Invalid bracket order: 3 + 3). Not enough open bracket")},
+	invalidInfix{"(3 + 3", errors.New("Invalid bracket order: (3 + 3. Not enough closed bracket")},
+	invalidInfix{"((((1 * (2 + 3)) - 3) + 4) * 5", errors.New("Invalid bracket order: ((((1 * (2 + 3)) - 3) + 4) * 5. Not enough closed bracket")},
+}
+
+func TestInvalidInfixInput(t *testing.T) {
+	for i, e := range invalidInfixCases {
+		_, err := FromInfix(e.infix)
+		if e.err.Error() != err.Error() {
+			t.Error("case:", i,
+				"\n\tinfix:          ", e.infix,
+				"\n\texpected error: ", e.err,
+				"\n\tresult:         ", err)
+		}
+	}
+}
+
+type invalidPostix struct {
+	rpn string
+	err error
+}
+
+var invalidPostfixCases = []invalidPostix{
+	invalidPostix{"1 a + 3 *", errors.New("Unknown operator: a")},
+	invalidPostix{"a 1 + 3 *", errors.New("Unknown operator: a")},
+	invalidPostix{"+ 3", errors.New("Invalid postfix notation: + 3")},
+	invalidPostix{"2 3 ?", errors.New("Unknown operator: ?")},
+	invalidPostix{"2 3 + *", errors.New("Invalid postfix notation: 2 3 + *")},
+}
+
+func TestInvalidPostfixInput(t *testing.T) {
+	for i, e := range invalidPostfixCases {
+		_, err := Calculate(e.rpn)
+		if e.err.Error() != err.Error() {
+			t.Error("case:", i,
+				"\n\trpn:            ", e.rpn,
+				"\n\texpected error: ", e.err,
+				"\n\tresult:         ", err)
+		}
+	}
+}
+
 func TestNotTrimmedPostfixString(t *testing.T) {
-	if Calculate(" 3 3 + ") != 6 {
+	r, _ := Calculate(" 3 3 + ")
+	if r != 6 {
 		t.Error(
 			"\n\trpn:             3 3 + ",
 			"\n\texpected result: 6",
-			"\n\tresult:          ", Calculate(" 3 3 + "))
+			"\n\tresult:          ", r)
 	}
 }
