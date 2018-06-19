@@ -2,11 +2,10 @@ package rpn
 
 import (
 	"bytes"
-	"math"
+	"log"
 	"strconv"
 	"strings"
-
-	"github.com/davecgh/go-spew/spew"
+	"unicode"
 )
 
 // FromInfix convert infix expressions to postfix expressions (reverse Polish notation)
@@ -15,25 +14,21 @@ func FromInfix(in string) string {
 	buf := newStack()
 	var tmp bytes.Buffer
 
-	in = strings.Replace(in, " ", "", -1)
+	for _, v := range in {
+		if unicode.IsDigit(v) {
+			tmp.WriteRune(v)
+			continue
+		}
+		if tmp.Len() > 0 {
+			out.push(tmp.String())
+			tmp.Reset()
+		}
 
-	for i := 0; i < len(in); i++ {
-		op := string(in[i])
-
+		op := string(v)
 		switch op {
 		case "^", "*", "/", "+", "-":
-			if tmp.Len() > 0 {
-				out.push(tmp.String())
-				tmp.Reset()
-				spew.Dump(out)
-				spew.Dump(tmp)
-			}
-			for {
-				topChar := buf.peak()
-				if topChar == nil {
-					break
-				}
-				top, isOperator := operators[topChar.(string)]
+			for t := buf.peak(); t != nil; t = buf.peak() {
+				top, isOperator := operators[t.(string)]
 				if !isOperator {
 					break
 				}
@@ -48,19 +43,14 @@ func FromInfix(in string) string {
 		case "(":
 			buf.push(op)
 		case ")":
-			for {
-				l := buf.pop()
-				if l.(string) == "(" {
-					break
-				}
+			for l := buf.pop(); l.(string) != "("; l = buf.pop() {
 				out.push(l)
 			}
-		default:
-			if _, err := strconv.ParseFloat(op, 64); err == nil {
-				tmp.WriteByte(in[i])
-				continue
-			}
 		}
+	}
+
+	if tmp.Len() > 0 {
+		out.push(tmp.String())
 	}
 
 	for buf.length > 0 {
@@ -74,34 +64,25 @@ func FromInfix(in string) string {
 func Calculate(in string) float64 {
 	buf := newStack()
 
-	in = strings.Replace(in, " ", "", -1)
+	for _, v := range strings.Split(in, " ") {
+		if len(v) == 0 {
+			continue
+		}
 
-	for i := 0; i < len(in); i++ {
-		op := string(in[i])
-
-		if _, err := strconv.ParseFloat(op, 64); err == nil {
-			buf.push(op)
+		if _, err := strconv.ParseFloat(v, 64); err == nil {
+			buf.push(v)
 			continue
 		}
 
 		sec, _ := strconv.ParseFloat(buf.pop().(string), 64)
 		first, _ := strconv.ParseFloat(buf.pop().(string), 64)
-		var r float64
 
-		switch op {
-		case "^":
-			r = math.Pow(first, sec)
-		case "*":
-			r = float64(first * sec)
-		case "/":
-			r = first / sec
-		case "+":
-			r = float64(first + sec)
-		case "-":
-			r = float64(first - sec)
+		calc, isOperator := calcFunctions[v]
+		if !isOperator {
+			log.Fatalf("Unknown operator: %s", v)
 		}
 
-		buf.push(strconv.FormatFloat(r, 'f', 2, 64))
+		buf.push(strconv.FormatFloat(calc(first, sec), 'f', 2, 64))
 	}
 
 	res, _ := strconv.ParseFloat(buf.string(), 10)
