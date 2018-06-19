@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// FromInfix convert infix expressions to postfix expressions (reverse Polish notation)
 func FromInfix(in string) string {
 	out := newStack()
 	buf := newStack()
@@ -14,8 +15,7 @@ func FromInfix(in string) string {
 
 	for i := 0; i < len(in); i++ {
 		op := string(in[i])
-
-		if _, err := strconv.ParseInt(op, 10, 32); err == nil {
+		if _, err := strconv.ParseFloat(op, 64); err == nil {
 			out.push(op)
 			continue
 		}
@@ -23,21 +23,18 @@ func FromInfix(in string) string {
 		switch op {
 		case "^", "*", "/", "+", "-":
 			for {
-				topChar := buf.pop()
+				topChar := buf.peak()
 				if topChar == nil {
-					// buf.push(topChar)
 					break
 				}
-				top, ok := operators[topChar.(string)]
-				if !ok {
-					buf.push(topChar)
+				top, isOperator := operators[topChar.(string)]
+				if !isOperator {
 					break
 				}
 				if operators[op].priority < top.priority ||
 					operators[op].priority == top.priority && operators[op].assoc == left {
-					out.push(topChar)
+					out.push(buf.pop())
 				} else {
-					buf.push(topChar)
 					break
 				}
 			}
@@ -47,26 +44,22 @@ func FromInfix(in string) string {
 		case ")":
 			for {
 				l := buf.pop()
-				if l.(string) != "(" {
-					out.push(l)
-					continue
+				if l.(string) == "(" {
+					break
 				}
-				break
+				out.push(l)
 			}
 		}
 	}
 
-	for {
-		l := buf.pop()
-		if l == nil {
-			break
-		}
-		out.push(l)
+	for buf.length > 0 {
+		out.push(buf.pop())
 	}
 
 	return out.string()
 }
 
+// Calculate given postfix expression
 func Calculate(in string) float64 {
 	buf := newStack()
 
@@ -80,10 +73,8 @@ func Calculate(in string) float64 {
 			continue
 		}
 
-		secChar := buf.pop()
-		firstChar := buf.pop()
-		sec, _ := strconv.ParseFloat(secChar.(string), 64)
-		first, _ := strconv.ParseFloat(firstChar.(string), 64)
+		sec, _ := strconv.ParseFloat(buf.pop().(string), 64)
+		first, _ := strconv.ParseFloat(buf.pop().(string), 64)
 		var r float64
 
 		switch op {

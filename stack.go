@@ -16,6 +16,7 @@ type (
 	}
 )
 
+// Return string representation of the stack
 func (n *node) string() []string {
 	var out []string
 
@@ -42,6 +43,14 @@ func (s *stack) pop() interface{} {
 	s.top = n.prev
 	s.length--
 	return n.value
+}
+
+// View the top item on the stack
+func (s *stack) peak() interface{} {
+	if s.length == 0 {
+		return nil
+	}
+	return s.top.value
 }
 
 // String returns string representation of stack elements separated by space
