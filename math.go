@@ -1,6 +1,9 @@
 package rpn
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 const (
 	left assoc = iota
@@ -9,43 +12,70 @@ const (
 
 type assoc int
 
+type mathFunc func(f, s float64) float64
+
 type operator struct {
 	priority int
 	assoc    assoc
 	call     mathFunc
 }
 
-var operators = map[string]operator{
-	"^": operator{
-		4,
-		right,
-		func(f, s float64) float64 {
-			return math.Pow(f, s)
-		}},
-	"*": operator{
-		3,
-		left,
-		func(f, s float64) float64 {
-			return float64(f * s)
-		}},
-	"/": operator{
-		3,
-		left,
-		func(f, s float64) float64 {
-			return f / s
-		}},
-	"+": operator{
-		2,
-		left,
-		func(f, s float64) float64 {
-			return float64(f + s)
-		}},
-	"-": operator{
-		2,
-		left,
-		func(f, s float64) float64 {
-			return float64(f - s)
-		}},
+func (o *operator) greater(o2 *operator) bool {
+	return o.priority > o2.priority
 }
 
-type mathFunc func(f, s float64) float64
+func (o *operator) equals(o2 *operator) bool {
+	return o.priority == o2.priority
+}
+
+type operators struct {
+	list map[string]*operator
+}
+
+func (o *operators) isOperator(in string) bool {
+	_, ok := o.list[in]
+
+	return ok
+}
+
+func (o *operators) get(in string) (*operator, error) {
+	if !o.isOperator(in) {
+		return nil, fmt.Errorf("Unknown operator: %s", in)
+	}
+
+	return o.list[in], nil
+}
+
+var operatorsList = operators{
+	map[string]*operator{
+		"^": &operator{
+			3,
+			right,
+			func(f, s float64) float64 {
+				return math.Pow(f, s)
+			}},
+		"*": &operator{
+			2,
+			left,
+			func(f, s float64) float64 {
+				return f * s
+			}},
+		"/": &operator{
+			2,
+			left,
+			func(f, s float64) float64 {
+				return f / s
+			}},
+		"+": &operator{
+			1,
+			left,
+			func(f, s float64) float64 {
+				return f + s
+			}},
+		"-": &operator{
+			1,
+			left,
+			func(f, s float64) float64 {
+				return f - s
+			}},
+	}}

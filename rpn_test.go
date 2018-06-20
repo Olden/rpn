@@ -4,57 +4,58 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 )
 
-type exp struct {
+var cases = []struct {
 	infix  string
 	rpn    string
 	result float64
-}
-
-var cases = []exp{
-	exp{"3 / 0", "3 0 /", math.Inf(1)},
-	exp{"3 + 2", "3 2 +", 5},
-	exp{"3 + -2", "3 0 2 - +", 1},
-	exp{"3 - -2", "3 0 2 - -", 5},
-	exp{"-3 + -2", "0 3 - 0 2 - +", -5},
-	exp{"-3 + -0 + -2", "0 3 - 0 0 - + 0 2 - +", -5},
-	exp{"-(3 + -2)*-1", "0 3 0 2 - + 0 1 - * -", 1},
-	exp{"3 2 4 + +", "3 2 4 + +", 9},
-	exp{" 3 + 2 ", "3 2 +", 5},
-	exp{"(3 + 2)", "3 2 +", 5},
-	exp{"(3 + (2))", "3 2 +", 5},
-	exp{"3 + 2 * 3", "3 2 3 * +", 9},
-	exp{"3 + 2 + 3 * 4", "3 2 + 3 4 * +", 17},
-	exp{"3 * 2 + 3 + 4", "3 2 * 3 + 4 +", 13},
-	exp{"3 + 2 * 3 + 4 * 5", "3 2 3 * + 4 5 * +", 29},
-	exp{"(3 + 2) * 3", "3 2 + 3 *", 15},
-	exp{"3 * 2 + 3 * (5 + 2)", "3 2 * 3 5 2 + * +", 27},
-	exp{"3 * 2 + 3 * (5 + 2 * 3)", "3 2 * 3 5 2 3 * + * +", 39},
-	exp{"((3 + 2) * 5)", "3 2 + 5 *", 25},
-	exp{"((3 - 1) / 2) * 3 + 5", "3 1 - 2 / 3 * 5 +", 8},
-	exp{"((3 - 1) / 2) * (3 + 5)", "3 1 - 2 / 3 5 + *", 8},
-	exp{"((((1 * (2 + 3)) - 3) + 4) * 5)", "1 2 3 + * 3 - 4 + 5 *", 30},
-	exp{"(1 + 2) * 4 + 3", "1 2 + 4 * 3 +", 15},
-	exp{"3 + 4 * 2 / (1 - 5) ^ 2", "3 4 2 * 1 5 - 2 ^ / +", 3.5},
-	exp{"9 ^ (1 / 2)", "9 1 2 / ^", 3},
-	exp{"9 ^ ((0 - 1) / 2)", "9 0 1 - 2 / ^", 0.3333333333333333},
-	exp{"((15 / (7 - (1 + 1))) * 3) - (2 + (1 + 1))", "15 7 1 1 + - / 3 * 2 1 1 + + -", 5},
+}{
+	{"3 / 0", "3 0 /", math.Inf(1)},
+	{"3 + 2", "3 2 +", 5},
+	{"3 + -2", "3 0 2 - +", 1},
+	{"3 - -2", "3 0 2 - -", 5},
+	{"-3 + -2", "0 3 - 0 2 - +", -5},
+	{"-3 + +2", "0 3 - 0 2 + +", -1},
+	{"-3 + -0 + -2", "0 3 - 0 0 - + 0 2 - +", -5},
+	{"-(3 + -2)*-1", "0 3 0 2 - + 0 1 - * -", 1},
+	{"3 - - - - 5", "3 0 0 0 5 - - - -", 8},
+	{" 3 + 2 ", "3 2 +", 5},
+	{"(3 + 2)", "3 2 +", 5},
+	{"(3 + (2))", "3 2 +", 5},
+	{"3 + 2 * 3", "3 2 3 * +", 9},
+	{"3 + 2 + 3 * 4", "3 2 + 3 4 * +", 17},
+	{"3 * 2 + 3 + 4", "3 2 * 3 + 4 +", 13},
+	{"3 + 2 * 3 + 4 * 5", "3 2 3 * + 4 5 * +", 29},
+	{"(3 + 2) * 3", "3 2 + 3 *", 15},
+	{"3 * 2 + 3 * (5 + 2)", "3 2 * 3 5 2 + * +", 27},
+	{"3 * 2 + 3 * (5 + 2 * 3)", "3 2 * 3 5 2 3 * + * +", 39},
+	{"((3 + 2) * 5)", "3 2 + 5 *", 25},
+	{"((3 - 1) / 2) * 3 + 5", "3 1 - 2 / 3 * 5 +", 8},
+	{"((3 - 1) / 2) * (3 + 5)", "3 1 - 2 / 3 5 + *", 8},
+	{"((((1 * (2 + 3)) - 3) + 4) * 5)", "1 2 3 + * 3 - 4 + 5 *", 30},
+	{"(1 + 2) * 4 + 3", "1 2 + 4 * 3 +", 15},
+	{"3 + 4 * 2 / (1 - 5) ^ 2", "3 4 2 * 1 5 - 2 ^ / +", 3.5},
+	{"9 ^ (1 / 2)", "9 1 2 / ^", 3},
+	{"9 ^ ((0 - 1) / 2)", "9 0 1 - 2 / ^", 0.3333333333333333},
+	{"((15 / (7 - (1 + 1))) * 3) - (2 + (1 + 1))", "15 7 1 1 + - / 3 * 2 1 1 + + -", 5},
 }
 
 func TestFromInfix(t *testing.T) {
 	for i, e := range cases {
-		r, err := FromInfix(e.infix)
-		if err != nil {
-			t.Error("unexpected error:", err)
-		}
-		if e.rpn != r {
-			t.Error("case:", i,
-				"\n\tinfix:       ", e.infix,
-				"\n\texpected rpn:", e.rpn,
-				"\n\tresult:      ", r)
-		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := FromInfix(e.infix)
+			if err != nil {
+				t.Error("unexpected error:", err)
+			}
+			if e.rpn != r {
+				t.Error("\n\tinfix:       ", e.infix,
+					"\n\texpected rpn:", e.rpn,
+					"\n\tresult:      ", r)
+			}
+		})
 	}
 }
 
@@ -66,17 +67,18 @@ func BenchmarkFromInfix(b *testing.B) {
 
 func TestRpnCalculation(t *testing.T) {
 	for i, e := range cases {
-		r, err := Calculate(e.rpn)
-		if err != nil {
-			t.Error("unexpected error:", err)
-		}
-		if e.result != r {
-			t.Error("case:", i,
-				"\n\tinfix:          ", e.infix,
-				"\n\trpn:            ", e.rpn,
-				"\n\texpected result:", e.result,
-				"\n\tresult:         ", r)
-		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := Calculate(e.rpn)
+			if err != nil {
+				t.Error("unexpected error:", err)
+			}
+			if e.result != r {
+				t.Error("\n\tinfix:          ", e.infix,
+					"\n\trpn:            ", e.rpn,
+					"\n\texpected result:", e.result,
+					"\n\tresult:         ", r)
+			}
+		})
 	}
 }
 
@@ -86,26 +88,25 @@ func BenchmarkRpnCalculation(b *testing.B) {
 	}
 }
 
-type invalidInfix struct {
+var invalidInfixCases = []struct {
 	infix string
 	err   error
-}
-
-var invalidInfixCases = []invalidInfix{
-	invalidInfix{"3 + 3)", errors.New("Invalid bracket order: 3 + 3). Not enough open bracket")},
-	invalidInfix{"(3 + 3", errors.New("Invalid bracket order: (3 + 3. Not enough closed bracket")},
-	invalidInfix{"((((1 * (2 + 3)) - 3) + 4) * 5", errors.New("Invalid bracket order: ((((1 * (2 + 3)) - 3) + 4) * 5. Not enough closed bracket")},
+}{
+	{"3 + 3)", errors.New("Invalid bracket order: 3 + 3). Not enough open bracket")},
+	{"(3 + 3", errors.New("Invalid bracket order: (3 + 3. Not enough closed bracket")},
+	{"((((1 * (2 + 3)) - 3) + 4) * 5", errors.New("Invalid bracket order: ((((1 * (2 + 3)) - 3) + 4) * 5. Not enough closed bracket")},
 }
 
 func TestInvalidInfixInput(t *testing.T) {
 	for i, e := range invalidInfixCases {
-		_, err := FromInfix(e.infix)
-		if e.err.Error() != err.Error() {
-			t.Error("case:", i,
-				"\n\tinfix:          ", e.infix,
-				"\n\texpected error: ", e.err,
-				"\n\tresult:         ", err)
-		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			_, err := FromInfix(e.infix)
+			if e.err.Error() != err.Error() {
+				t.Error("\n\tinfix:          ", e.infix,
+					"\n\texpected error: ", e.err,
+					"\n\tresult:         ", err)
+			}
+		})
 	}
 }
 
@@ -119,22 +120,25 @@ var invalidPostfixCases = []string{
 
 func TestInvalidPostfixInput(t *testing.T) {
 	for i, c := range invalidPostfixCases {
-		_, err := Calculate(c)
-		exp := fmt.Errorf("Invalid postfix notation: %s", c)
-		if err == nil || exp.Error() != err.Error() {
-			t.Error("case:", i,
-				"\n\trpn:            ", c,
-				"\n\texpected error: ", exp,
-				"\n\tresult:         ", err)
-		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			_, err := Calculate(c)
+			exp := fmt.Errorf("Invalid postfix notation: %s", c)
+			if err == nil || exp.Error() != err.Error() {
+				t.Error("\n\trpn:            ", c,
+					"\n\texpected error: ", exp,
+					"\n\tresult:         ", err)
+			}
+		})
 	}
 }
 
 func TestPostfixValidation(t *testing.T) {
-	for _, e := range invalidPostfixCases {
-		if isValidRpn(e) != false {
-			t.Errorf("Given rpn: %s is invalid, but it not been determined", e)
-		}
+	for i, e := range invalidPostfixCases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			if isValidRpn(e) != false {
+				t.Errorf("Given rpn: %s is invalid, but it not been determined", e)
+			}
+		})
 	}
 }
 

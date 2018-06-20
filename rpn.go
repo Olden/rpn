@@ -10,7 +10,7 @@ import (
 
 // FromInfix convert infix expressions to postfix expressions (reverse Polish notation)
 func FromInfix(in string) (string, error) {
-	out := newStack()
+	var out []string
 	buf := newStack()
 	var tmp bytes.Buffer
 
@@ -21,28 +21,29 @@ func FromInfix(in string) (string, error) {
 			continue
 		}
 		if tmp.Len() > 0 {
-			out.push(tmp.String())
+			out = append(out, tmp.String())
 			tmp.Reset()
 			prev = 0
 		}
 		op := string(v)
 		switch op {
 		case "^", "*", "/", "+", "-":
-			// check unary minus
-			if op == "-" && !unicode.IsDigit(prev) && prev != 0 || op == "-" && i == 0 {
-				out.push("0")
+			// check unary operation
+			if (op == "-" || op == "+") && (operatorsList.isOperator(string(prev)) || i == 0) {
+				out = append(out, "0")
 				buf.push(op)
 				break
 			}
 
 			for t := buf.peak(); t != nil; t = buf.peak() {
-				top, ok := operators[t.(string)]
+				top, err := operatorsList.get(t.(string))
+				o1, err1 := operatorsList.get(op)
 
-				if !ok || operators[op].priority > top.priority ||
-					operators[op].priority == top.priority && operators[op].assoc == right {
+				if err != nil || err1 != nil || o1.greater(top) ||
+					o1.equals(top) && o1.assoc == right {
 					break
 				}
-				out.push(buf.pop())
+				out = append(out, buf.pop().(string))
 			}
 			buf.push(op)
 			prev = v
@@ -50,31 +51,31 @@ func FromInfix(in string) (string, error) {
 			buf.push(op)
 		case ")":
 			for {
-				if buf.length == 0 {
+				if buf.top == nil {
 					return "", fmt.Errorf("Invalid bracket order: %s. Not enough open bracket", in)
 				}
 				l := buf.pop()
 				if l.(string) == "(" {
 					break
 				}
-				out.push(l)
+				out = append(out, l.(string))
 			}
 		}
 	}
 
 	if tmp.Len() > 0 {
-		out.push(tmp.String())
+		out = append(out, tmp.String())
 	}
 
-	for buf.length > 0 {
+	for buf.top != nil {
 		l := buf.pop()
 		if l.(string) == "(" {
 			return "", fmt.Errorf("Invalid bracket order: %s. Not enough closed bracket", in)
 		}
-		out.push(l)
+		out = append(out, l.(string))
 	}
 
-	return out.string(), nil
+	return strings.Join(out, " "), nil
 }
 
 // Calculate given postfix expression
@@ -93,7 +94,11 @@ func Calculate(in string) (float64, error) {
 		sec := buf.pop().(float64)
 		first := buf.pop().(float64)
 
-		buf.push(operators[v].call(first, sec))
+		op, err := operatorsList.get(v)
+		if err != nil {
+			return 0, fmt.Errorf("Invalid postfix notation: %s", in)
+		}
+		buf.push(op.call(first, sec))
 	}
 
 	return buf.pop().(float64), nil
@@ -107,7 +112,7 @@ func isValidRpn(in string) bool {
 			continue
 		}
 
-		if _, ok := operators[v]; !ok {
+		if !operatorsList.isOperator(v) {
 			continue
 		}
 		if c < 1 {
