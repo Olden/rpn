@@ -84,7 +84,7 @@ func Calculate(in string) (float64, error) {
 	}
 	buf := newStack()
 
-	for _, v := range strings.Split(strings.Trim(in, " "), " ") {
+	for _, v := range strings.Fields(in) {
 		if n, err := strconv.ParseFloat(v, 64); err == nil {
 			buf.push(n)
 			continue
@@ -101,26 +101,20 @@ func Calculate(in string) (float64, error) {
 
 func isValidRpn(in string) bool {
 	c := 0
-	for _, v := range strings.Split(strings.Trim(in, " "), " ") {
+	for _, v := range strings.Fields(in) {
 		if _, err := strconv.ParseFloat(v, 64); err == nil {
 			c++
 			continue
 		}
 
-		_, ok := operators[v]
-		if ok {
-			c--
-			c--
-			if c < 0 {
-				return false
-			}
-			c++
+		if _, ok := operators[v]; !ok {
+			continue
 		}
+		if c < 1 {
+			return false
+		}
+		c--
 	}
 
-	if c == 1 {
-		return true
-	}
-
-	return false
+	return c == 1
 }
