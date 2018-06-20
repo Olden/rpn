@@ -28,54 +28,51 @@ func (o *operator) equals(o2 *operator) bool {
 	return o.priority == o2.priority
 }
 
-type operators struct {
-	list map[string]*operator
-}
+type operators map[string]*operator
 
-func (o *operators) isOperator(in string) bool {
-	_, ok := o.list[in]
+func (o operators) isOperator(in string) bool {
+	_, ok := o[in]
 
 	return ok
 }
 
-func (o *operators) get(in string) (*operator, error) {
+func (o operators) get(in string) (*operator, error) {
 	if !o.isOperator(in) {
 		return nil, fmt.Errorf("Unknown operator: %s", in)
 	}
 
-	return o.list[in], nil
+	return o[in], nil
 }
 
 var operatorsList = operators{
-	map[string]*operator{
-		"^": &operator{
-			3,
-			right,
-			func(f, s float64) float64 {
-				return math.Pow(f, s)
-			}},
-		"*": &operator{
-			2,
-			left,
-			func(f, s float64) float64 {
-				return f * s
-			}},
-		"/": &operator{
-			2,
-			left,
-			func(f, s float64) float64 {
-				return f / s
-			}},
-		"+": &operator{
-			1,
-			left,
-			func(f, s float64) float64 {
-				return f + s
-			}},
-		"-": &operator{
-			1,
-			left,
-			func(f, s float64) float64 {
-				return f - s
-			}},
-	}}
+	"^": &operator{
+		3,
+		right,
+		func(f, s float64) float64 {
+			return math.Pow(f, s)
+		}},
+	"*": &operator{
+		2,
+		left,
+		func(f, s float64) float64 {
+			return f * s
+		}},
+	"/": &operator{
+		2,
+		left,
+		func(f, s float64) float64 {
+			return f / s
+		}},
+	"+": &operator{
+		1,
+		left,
+		func(f, s float64) float64 {
+			return f + s
+		}},
+	"-": &operator{
+		1,
+		left,
+		func(f, s float64) float64 {
+			return f - s
+		}},
+}
